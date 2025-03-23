@@ -1,1 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultant Airbus - Le Jeu</title>
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f9;
+          margin: 0;
+          padding: 20px;
+          color: #333;
+      }
+      #game-container {
+          max-width: 600px;
+          margin: auto;
+          background: #fff;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      #dialogue {
+          height: 300px;
+          overflow-y: auto;
+          border: 1px solid #ddd;
+          padding: 10px;
+          margin-bottom: 20px;
+          background: #fafafa;
+      }
+      button {
+          display: block;
+          width: 100%;
+          padding: 10px;
+          margin-top: 10px;
+          background-color: #007BFF;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 16px;
+      }
+      button:hover {
+          background-color: #0056b3;
+      }
+      .hidden { display: none; }
+      .success { color: green; font-weight: bold; }
+      .failure { color: red; font-weight: bold; }
+      .player { color: blue; font-weight: bold; }
+      .manager { color: purple; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div id="game-container">
+  <h1>Consultant chez Airbus</h1>
+  <div id="dialogue"></div>
+  <div id="choices"></div>
+  <button id="restart-button" class="hidden">Recommencer</button>
+</div>
 
+<script>
+  const dialogueElement = document.getElementById('dialogue');
+  const choicesElement = document.getElementById('choices');
+  const restartButton = document.getElementById('restart-button');
+
+  let gameState = {
+      step: 0,
+      success: false,
+      history: []
+  };
+
+  const gameDialogues = [
+      // Étape 0 - Début commun
+      {
+          manager: "Manager : Bonjour, consultant. Que puis-je faire pour vous aujourd'hui ?",
+          choices: [
+              { player: "Je veux quitter cette mission.", nextStep: 1 },
+              { player: "Mes collègues disent que je suis nul.", nextStep: 6 },
+              { player: "Le site est trop loin de mes activités de foot.", nextStep: 11 },
+              { player: "Je veux rejoindre Pernod pour leur collection de rhums.", nextStep: 16 },
+              { player: "J'ai créé des NFTs de schémas de réacteurs.", nextStep: 21 },
+              { player: "Je lance une startup de yoga avec des chèvres.", nextStep: 26 }
+          ]
+      },
+
+      // Chemin principal (indices 1 à 5)
+      {
+          manager: "Manager : Pourquoi vouloir quitter cette mission cruciale ?",
+          choices: [
+              { player: "J'ai une opportunité innovante ailleurs.", nextStep: 2 },
+              { player: "Tout le monde est parti, je me sens isolé.", nextStep: 2 },
+              { player: "Je mérite un meilleur salaire.", nextStep: 2 }
+          ]
+      },
+      {
+          manager: "Manager : Quelle est cette opportunité ?",
+          choices: [
+              { player: "Un projet spatial révolutionnaire.", nextStep: 3 },
+              { player: "Un poste avec plus de responsabilités.", nextStep: 3 }
+          ]
+      },
+      {
+          manager: "Manager : Nous avons investi 3M€ dans votre formation...",
+          choices: [
+              { player: "Je comprends, mais je dois partir.", nextStep: 4 },
+              { player: "Je reste si vous triplez mon salaire.", nextStep: 4 }
+          ]
+      },
+      {
+          manager: "Manager : Et si nous créons un poste de consultant senior ?",
+          choices: [
+              { player: "Je veux bien essayer.", nextStep: 5 },
+              { player: "Non, j'ai déjà pris ma décision.", nextStep: 5 }
+          ]
+      },
+      {
+          manager: "Manager : Très bien... Revenez demain pour ma décision.",
+          choices: [
+              { player: "Merci, je patienterai.", nextStep: 101 }, // Fin de branche : succès
+              { player: "C'est ma dernière chance ?", nextStep: 100 }  // Fin de branche : échec
+          ]
+      },
+
+      // Chemin "collègues disent que je suis nul" (indices 6 à 10)
+      {
+          manager: "Manager : Vos collègues disent que vous êtes nul ?",
+          choices: [
+              { player: "Ils sont jaloux de mon aura de licorne.", nextStep: 7 },
+              { player: "C'est parce que je critique leur café infect.", nextStep: 7 }
+          ]
+      },
+      {
+          manager: "Manager : Une aura de licorne ? Sérieusement ?",
+          choices: [
+              { player: "Je suis le Steve Jobs du consulting.", nextStep: 8 },
+              { player: "Mon génie dépasse votre compréhension.", nextStep: 8 }
+          ]
+      },
+      {
+          manager: "Manager : Vous vous prenez pour Steve Jobs maintenant ?",
+          choices: [
+              { player: "J'ai inventé le café soluble aromatisé.", nextStep: 9 },
+              { player: "Je porte un turtleneck tous les jours.", nextStep: 9 }
+          ]
+      },
+      {
+          manager: "Manager : Et ça justifie votre incompétence ?",
+          choices: [
+              { player: "C'est une question de disruption culturelle.", nextStep: 10 },
+              { player: "Je suis trop en avance sur mon temps.", nextStep: 10 }
+          ]
+      },
+      {
+          manager: "Manager : Vous restez ici, c'est définitif.",
+          choices: [
+              { player: "Mais...", nextStep: 101 }, // Succès
+              { player: "Vous ne comprenez rien !", nextStep: 100 }  // Échec
+          ]
+      },
+
+      // Chemin "activités de foot" (indices 11 à 15)
+      {
+          manager: "Manager : Le site est trop loin de vos activités de foot ?",
+          choices: [
+              { player: "Je dois coacher l'équipe de foot de la cantine.", nextStep: 12 },
+              { player: "Le foot est mon deuxième métier.", nextStep: 12 }
+          ]
+      },
+      {
+          manager: "Manager : Vous coacher des cuisiniers ?",
+          choices: [
+              { player: "Ils ont un potentiel pour la Ligue des Champions.", nextStep: 13 },
+              { player: "Je prépare la coupe du monde des cantines.", nextStep: 13 }
+          ]
+      },
+      {
+          manager: "Manager : Et vous croyez qu'ils vont gagner quelque chose ?",
+          choices: [
+              { player: "Ils ont déjà battu Dassault Aviation 3-0.", nextStep: 14 },
+              { player: "On s'entraîne dur pendant les pauses café.", nextStep: 14 }
+          ]
+      },
+      {
+          manager: "Manager : Avec quel budget ?",
+          choices: [
+              { player: "J'ai détourné des fonds de R&D.", nextStep: 15 },
+              { player: "On utilise des pièces de rechange d'A320.", nextStep: 15 }
+          ]
+      },
+      {
+          manager: "Manager : Vos activités annexes perturbent la mission.",
+          choices: [
+              { player: "Mais le foot c'est important !", nextStep: 101 }, // Succès
+              { player: "Je ne peux pas choisir !", nextStep: 100 }         // Échec
+          ]
+      },
+
+      // Chemin "Pernod Ricard" (indices 16 à 20)
+      {
+          manager: "Manager : Pernod et leurs rhums ? C'est sérieux ?",
+          choices: [
+              { player: "Je veux inventer le mojito Airbus.", nextStep: 17 },
+              { player: "L'alcoolisme est la clé de l'innovation.", nextStep: 17 }
+          ]
+      },
+      {
+          manager: "Manager : Un mojito Airbus ? Expliquez-vous.",
+          choices: [
+              { player: "Un avion qui sert des cocktails en vol.", nextStep: 18 },
+              { player: "Des réacteurs qui fonctionnent au rhum.", nextStep: 18 }
+          ]
+      },
+      {
+          manager: "Manager : Et la sécurité aérienne dans tout ça ?",
+          choices: [
+              { player: "L'ivresse rend les turbulences agréables.", nextStep: 19 },
+              { player: "On remplacera les gilets de sauvetage par des bouteilles.", nextStep: 19 }
+          ]
+      },
+      {
+          manager: "Manager : Vous avez pensé à l'approbation de l'aviation civile ?",
+          choices: [
+              { player: "On graissera la patte des inspecteurs.", nextStep: 20 },
+              { player: "Le rhum dissout toutes les règles.", nextStep: 20 }
+          ]
+      },
+      {
+          manager: "Manager : Votre projet est irréaliste et dangereux.",
+          choices: [
+              { player: "Mais c'est révolutionnaire !", nextStep: 101 },
+              { player: "Vous êtes trop fermé d'esprit !", nextStep: 100 }
+          ]
+      },
+
+      // Chemin "NFTs de réacteurs" (indices 21 à 25)
+      {
+          manager: "Manager : Des NFTs de réacteurs ? Vous plaisantez ?",
+          choices: [
+              { player: "C'est l'avenir de l'aéronautique virtuelle.", nextStep: 22 },
+              { player: "J'ai déjà vendu 3 exemplaires à Elon Musk.", nextStep: 22 }
+          ]
+      },
+      {
+          manager: "Manager : Et à quoi ça sert concrètement ?",
+          choices: [
+              { player: "À décorer les métavers de PDG.", nextStep: 23 },
+              { player: "Pour les courses de Formule 1 virtuelle.", nextStep: 23 }
+          ]
+      },
+      {
+          manager: "Manager : Vous avez conscience que c'est absurde ?",
+          choices: [
+              { player: "Plus que vos réunions stratégiques.", nextStep: 24 },
+              { player: "C'est vous qui ne comprenez pas le métavers.", nextStep: 24 }
+          ]
+      },
+      {
+          manager: "Manager : Et la propriété intellectuelle ?",
+          choices: [
+              { player: "J'ai piraté vos brevets pour les NFTs.", nextStep: 25 },
+              { player: "C'est du domaine public maintenant.", nextStep: 25 }
+          ]
+      },
+      {
+          manager: "Manager : Votre projet est illégal et contraire à nos valeurs.",
+          choices: [
+              { player: "Vive la blockchain !", nextStep: 101 },
+              { player: "Je porterai plainte !", nextStep: 100 }
+          ]
+      },
+
+      // Chemin "yoga avec chèvres" (indices 26 à 30)
+      {
+          manager: "Manager : Du yoga avec des chèvres ? C'est un business plan ?",
+          choices: [
+              { player: "C'est plus rentable que votre stratégie.", nextStep: 27 },
+              { player: "Les chèvres comprennent mieux que vos ingénieurs.", nextStep: 27 }
+          ]
+      },
+      {
+          manager: "Manager : Et comment ça marche exactement ?",
+          choices: [
+              { player: "Les chèvres font des prédictions de marché.", nextStep: 28 },
+              { player: "Elles testent les sièges confortables.", nextStep: 28 }
+          ]
+      },
+      {
+          manager: "Manager : Des prédictions de marché par des chèvres ?",
+          choices: [
+              { player: "Elles ont prédit la crise des semi-conducteurs.", nextStep: 29 },
+              { player: "Leur bêlement est un langage crypté.", nextStep: 29 }
+          ]
+      },
+      {
+          manager: "Manager : Vous avez des preuves de ces compétences ?",
+          choices: [
+              { player: "J'ai des témoignages de fermiers bretons.", nextStep: 30 },
+              { player: "C'est confidentiel, comme vos pertes financières.", nextStep: 30 }
+          ]
+      },
+      {
+          manager: "Manager : Votre projet est totalement irréaliste.",
+          choices: [
+              { player: "Om shanti shanti !", nextStep: 101 },
+              { player: "Les chèvres m'attendent !", nextStep: 100 }
+          ]
+      }
+  ];
+
+  function updateDialogue() {
+      dialogueElement.innerHTML = '';
+      gameState.history.forEach(entry => {
+          const line = document.createElement('p');
+          line.textContent = entry.text;
+          line.className = entry.type;
+          dialogueElement.appendChild(line);
+      });
+
+      if (gameState.step >= 100) {
+          showEndScreen(gameState.step === 101);
+      } else {
+          showCurrentDialogue();
+      }
+  }
+
+  function showCurrentDialogue() {
+      const current = gameDialogues[gameState.step];
+      if (!current) return;
+
+      const managerLine = document.createElement('p');
+      managerLine.textContent = current.manager;
+      managerLine.className = 'manager';
+      dialogueElement.appendChild(managerLine);
+
+      choicesElement.innerHTML = '';
+      current.choices.forEach(choice => {
+          const button = document.createElement('button');
+          button.textContent = choice.player;
+          button.onclick = () => {
+              gameState.history.push(
+                  { text: current.manager, type: 'manager' },
+                  { text: choice.player, type: 'player' }
+              );
+              gameState.step = choice.nextStep;
+              updateDialogue();
+          };
+          choicesElement.appendChild(button);
+      });
+  }
+
+  function showEndScreen(success) {
+      const endMessage = document.createElement('p');
+      endMessage.textContent = success 
+          ? "SUCCÈS ! Vous avez négocié votre départ." 
+          : "ÉCHEC... Vous restez coincé chez Airbus.";
+      endMessage.className = success ? 'success' : 'failure';
+      dialogueElement.appendChild(endMessage);
+      restartButton.classList.remove('hidden');
+  }
+
+  function resetGame() {
+      gameState = { step: 0, success: false, history: [] };
+      restartButton.classList.add('hidden');
+      dialogueElement.innerHTML = '';
+      choicesElement.innerHTML = '';
+      updateDialogue();
+  }
+
+  restartButton.onclick = resetGame;
+  updateDialogue();
+</script>
+</body>
+  </html>
